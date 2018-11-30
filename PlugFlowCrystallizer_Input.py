@@ -8,22 +8,22 @@ Created on Fri Jul 27 17:33:26 2018
 import scipy as sci
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from PlugFlowCrystalizer import *
+from PlugFlowCrystallizer import *
 
 ###############################################################################
 ###########################USER INPUT BEGINS###################################
 ############################DEFINE SPATIAL AND TEMPORAL PARAMETERS#############
 length=4
 breadth=0.4
-colpts=120
+colpts=100
 rowpts=25
-time=100
-crystal_timedelay=4 #The time after which crystals are introduced in the system
+time=80
+crystal_timedelay=40 #The time after which crystals are introduced in the system
 ###############################MISC############################################
 CFL_number=0.1 #Do not touch this unless solution diverges
 file_flag=0 #Keep 1 to print results to file
-plot_flag=1 #Keep 1 to plot results at the end
 file_interval=10 #Regular time interval after which files are written
+plot_flag=1 #Keep 1 to plot results at the end
 ###########################DEFINE PHYSICAL PARAMETERS##########################
 rho=1
 mu=0.01
@@ -37,7 +37,7 @@ g=1.32
 rhoc=2.1
 dH=-1000
 ##########################DEFINE INITIAL MOMENTUM PARAMETERS###################
-u_in=1
+u_in=0.1
 v_wall=0
 p_out=0
 ##########################DEFINE INITIAL TEMPERATURE PARAMETERS###############
@@ -109,6 +109,7 @@ while(t<time):
     SetTBoundary(pfc,intemp,zeroflux,jackettop,jacketbottom)
     SetCBoundary(pfc,inconc,zeroflux,zeroflux,zeroflux)
     
+    GetStarredVelocities(pfc,water)
     SolvePressurePoisson(pfc,water,zeroflux,pressureatm,zeroflux,zeroflux)
     SolveMomentumEquation(pfc,water)
     AdjustUV(pfc)
@@ -147,6 +148,9 @@ while(t<time):
     L_c=kno3.L_c
     t+=timestep
     i+=1
+    #nan check
+    if(sci.isnan(sci.sum(C))):
+        break
     print(time-t)
 
 ###########################END OF RUN##########################################
