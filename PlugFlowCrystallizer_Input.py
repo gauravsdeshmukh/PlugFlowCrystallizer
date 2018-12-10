@@ -13,44 +13,44 @@ from PlugFlowCrystallizer import *
 ###############################################################################
 ###########################USER INPUT BEGINS###################################
 ############################DEFINE SPATIAL AND TEMPORAL PARAMETERS#############
-length=4
+length=10
 breadth=0.4
-colpts=100
-rowpts=25
-time=80
-crystal_timedelay=40 #The time after which crystals are introduced in the system
+colpts=150
+rowpts=40
+time=100
+crystal_timedelay=20 #The time after which crystals are introduced in the system
 ###############################MISC############################################
 CFL_number=0.1 #Do not touch this unless solution diverges
-file_flag=0 #Keep 1 to print results to file
-file_interval=10 #Regular time interval after which files are written
+file_flag=1 #Keep 1 to print results to file
+file_interval=50 #Regular time interval after which files are written
 plot_flag=1 #Keep 1 to plot results at the end
 ###########################DEFINE PHYSICAL PARAMETERS##########################
 rho=1
 mu=0.01
-k=0.5
-cp=100
-D=1e-2
+k=0.6
+cp=41.8
+D=1.5e-02
 ###########################DEFINE CRYSTAL PARAMETERS###########################
 MW=101.1032
 kg=1.1612*10**(-4)
 g=1.32
-rhoc=2.1
-dH=-1000
+rhoc=1400
+dH=-50
 ##########################DEFINE INITIAL MOMENTUM PARAMETERS###################
-u_in=0.1
+u_in=2
 v_wall=0
 p_out=0
 ##########################DEFINE INITIAL TEMPERATURE PARAMETERS###############
-h=3000
+h=4000
 T_jacket=303
 T_in=363
 T_init=293
 ##########################DEFINE INITIAL CONCENTRATION CONDITIONS##############
 C_init=0
-C_in=0.1
+C_in=150
 #########################DEFINE INITIAL CRYSTAL CONDITIONS#####################
 N_init=1000
-L_cryst=1e-5
+L_cryst=1e-3
 L_init=N_init*L_cryst
 
 ###############################################################################
@@ -90,7 +90,7 @@ kno3.SetConstants(MW,kg,g,rhoc,dH)
 #########################SET INITIAL CONDITIONS IN DOMAIN######################
 SetInitialT(pfc,T_init)
 SetInitialC(pfc,C_init)
-SetInitialNL(kno3,N_init,L_init)
+SetInitialNLAV(kno3,N_init,L_init)
 
 #######################USER INPUT ENDS#########################################
 ###############################################################################
@@ -125,9 +125,15 @@ while(t<time):
         GetG(pfc,kno3)
         
         SolvePopulationBalanceEquation(pfc,kno3)
-        AdjustNL(kno3)
+        AdjustNLAV(kno3)
     
-    SetCentrePUVTCNL(pfc,kno3)
+    SetCentrePUVTCNLAV(pfc,kno3)
+    
+    if(t<40):
+        file_flag=1
+    else:
+        file_flag=0
+    
     if(file_flag==1):
         WriteToFile(pfc,kno3,i,file_interval)
     
@@ -146,6 +152,8 @@ while(t<time):
     C_c=pfc.C_c
     N_c=kno3.N_c
     L_c=kno3.L_c
+    A_c=kno3.A_c
+    V_c=kno3.V_c
     t+=timestep
     i+=1
     #nan check
@@ -195,7 +203,7 @@ if(plot_flag==1):
     plt.title("Concentration Plot")
     
     plt.figure(figsize=(16,8))
-    plt.contourf(X,Y,L_c,cmap=cm.viridis)
+    plt.contourf(X,Y,L_c/N_c,cmap=cm.viridis)
     plt.colorbar()
     plt.title("Crystal Length Plot")
 

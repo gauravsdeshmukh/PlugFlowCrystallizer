@@ -77,6 +77,7 @@ class Crystal:
         self.colpts=self.space.colpts
         self.GetSolubility()
         self.SetMeshes()
+        self.SetGeometricParameters()
         
     def GetSolubility(self):
         cwdir=os.getcwd()
@@ -98,13 +99,21 @@ class Crystal:
         self.rho=rho
         self.dH=dH
         
+    def SetGeometricParameters(self,K_a=sci.pi,K_v=sci.pi/6):
+        self.K_a=K_a
+        self.K_v=K_v
+        
     def SetMeshes(self):
         self.N=sci.zeros((self.rowpts+2,self.colpts+2))
         self.L=sci.zeros((self.rowpts+2,self.colpts+2))
+        self.A=sci.zeros((self.rowpts+2,self.colpts+2))
+        self.V=sci.zeros((self.rowpts+2,self.colpts+2))
         self.G=sci.zeros((self.rowpts+2,self.colpts+2))
         self.Cstar=sci.zeros((self.rowpts+2,self.colpts+2))
         self.N_next=sci.zeros((self.rowpts+2,self.colpts+2))
         self.L_next=sci.zeros((self.rowpts+2,self.colpts+2))
+        self.A_next=sci.zeros((self.rowpts+2,self.colpts+2))
+        self.V_next=sci.zeros((self.rowpts+2,self.colpts+2))
     
 ##########################BOUNDARY SPACE#######################################
 
@@ -338,7 +347,7 @@ def AdjustUV(space):
     space.u[1:-1,1:-1]=space.u_next[1:-1,1:-1].copy()
     space.v[1:-1,1:-1]=space.v_next[1:-1,1:-1].copy()
     
-def SetCentrePUVTCNL(space,crystal):
+def SetCentrePUVTCNLAV(space,crystal):
     space.p_c=space.p[1:-1,1:-1]
     space.u_c=space.u[1:-1,1:-1]
     space.v_c=space.v[1:-1,1:-1]
@@ -346,6 +355,8 @@ def SetCentrePUVTCNL(space,crystal):
     space.C_c=space.C[1:-1,1:-1]
     crystal.N_c=crystal.N[1:-1,1:-1]
     crystal.L_c=crystal.L[1:-1,1:-1]
+    crystal.A_c=crystal.A[1:-1,1:-1]
+    crystal.V_c=crystal.V[1:-1,1:-1]
    
 def SetInitialT(space,T_int):
     space.T[:,:]=T_int    
@@ -363,17 +374,17 @@ def SolveEnergyEquation(space,crystal,fluid):
     dt=float(space.dt)
     alpha=float(fluid.alpha)
     cp=float(fluid.cp)
-    rho=float(fluid.rho)
     rhoc=float(crystal.rho)
     dH=float(crystal.dH)
+    K_v=float(crystal.K_v)
     G=crystal.G.astype(float)
-    N=crystal.N.astype(float)
+    A=crystal.A.astype(float)
     
     T1_y=(T[2:,1:cols+1]-T[0:rows,1:cols+1])/(2*dy)
     T1_x=(T[1:rows+1,2:]-T[1:rows+1,0:cols])/(2*dx)
     T2_y=(T[2:,1:cols+1]-2*T[1:rows+1,1:cols+1]+T[0:rows,1:cols+1])/(dy**2)
     T2_x=(T[1:rows+1,2:]-2*T[1:rows+1,1:cols+1]+T[1:rows+1,0:cols])/(dx**2)
-    source=-((rhoc*dH)/(rho*cp))*G[1:rows+1,1:cols+1]*N[1:rows+1,1:cols+1]
+    source=-3*(rhoc)*(dH/cp)*K_v*G[1:rows+1,1:cols+1]*A[1:rows+1,1:cols+1]
     T_next[1:rows+1,1:cols+1]=T[1:rows+1,1:cols+1]-dt*(u[1:rows+1,1:cols+1]*T1_x+v[1:rows+1,1:cols+1]*T1_y)+(dt*alpha*(T2_x+T2_y))+(dt*source)
     
 def AdjustT(space):
@@ -395,14 +406,16 @@ def SolveSpeciesEquation(space,crystal,fluid):
     dt=float(space.dt)
     D=float(fluid.D)
     rhoc=float(crystal.rho)
+    MW=float(crystal.MW)
+    K_v=float(crystal.K_v)
     G=crystal.G.astype(float)
-    N=crystal.N.astype(float)
+    A=crystal.A.astype(float)
     
     C1_y=(C[2:,1:cols+1]-C[0:rows,1:cols+1])/(2*dy)
     C1_x=(C[1:rows+1,2:]-C[1:rows+1,0:cols])/(2*dx)
     C2_y=(C[2:,1:cols+1]-2*C[1:rows+1,1:cols+1]+C[0:rows,1:cols+1])/(dy**2)
     C2_x=(C[1:rows+1,2:]-2*C[1:rows+1,1:cols+1]+C[1:rows+1,0:cols])/(dx**2)
-    source=-rhoc*G[1:rows+1,1:cols+1]*N[1:rows+1,1:cols+1]
+    source=-3*(rhoc/MW)*K_v*G[1:rows+1,1:cols+1]*A[1:rows+1,1:cols+1]
     C_next[1:rows+1,1:cols+1]=C[1:rows+1,1:cols+1]-dt*(u[1:rows+1,1:cols+1]*C1_x+v[1:rows+1,1:cols+1]*C1_y)+(dt*D*(C2_x+C2_y))+(dt*source)
     
 def AdjustC(space):
@@ -412,7 +425,7 @@ def GetCstar(space,crystal):
     T=space.T.astype(float,copy=True)
     T-=273.16
     Cstar_unmodded=crystal.a0+crystal.a1*T+crystal.a2*T**2
-    Cstar=(Cstar_unmodded/crystal.MW)*10/1000 #mol/m3
+    Cstar=(Cstar_unmodded/crystal.MW)*10*1000/1000 #kmol/m3
     crystal.Cstar=Cstar.copy()
 
 def GetG(space,crystal):
@@ -420,14 +433,20 @@ def GetG(space,crystal):
     g=float(crystal.g)
     C=space.C.astype(float)
     Cstar=crystal.Cstar.astype(float)
-    G=kg*sci.sign(C-Cstar)*abs(C-Cstar)**g
+    G=kg*sci.sign(C-Cstar)*(abs(C-Cstar)/Cstar)**g
     crystal.G=G.copy()
 
-def SetInitialNL(crystal,N_init,L_init):
+def SetInitialNLAV(crystal,N_init,L_init):
+    K_a=crystal.K_a
+    K_v=crystal.K_v
     crystal.N[:,0]=N_init
     crystal.L[:,0]=L_init
+    crystal.A[:,0]=K_a*L_init**2
+    crystal.V[:,0]=K_v*L_init**3
     crystal.N_next[:,0]=N_init
     crystal.L_next[:,0]=L_init
+    crystal.A_next[:,0]=K_a*L_init**2
+    crystal.V_next[:,0]=K_v*L_init**3
 
 @nb.jit
 def SolvePopulationBalanceEquation(space,crystal):
@@ -439,8 +458,12 @@ def SolvePopulationBalanceEquation(space,crystal):
     G=crystal.G.astype(float)
     N=crystal.N.astype(float)
     L=crystal.L.astype(float)
+    A=crystal.A.astype(float)
+    V=crystal.V.astype(float)
     N_next=crystal.N_next.astype(float,copy=False)
     L_next=crystal.L_next.astype(float,copy=False)
+    A_next=crystal.A_next.astype(float,copy=False)
+    V_next=crystal.V_next.astype(float,copy=False)
     
     N1_x=(N[1:rows+1,1:cols+1]-N[1:rows+1,0:cols])/dx
     N_next[1:rows+1,1:cols+1]=N[1:rows+1,1:cols+1]-(dt*u[1:rows+1,1:cols+1]*N1_x)
@@ -448,10 +471,17 @@ def SolvePopulationBalanceEquation(space,crystal):
     L1_x=(L[1:rows+1,1:cols+1]-L[1:rows+1,0:cols])/dx
     L_next[1:rows+1,1:cols+1]=L[1:rows+1,1:cols+1]-(dt*u[1:rows+1,1:cols+1]*L1_x)+(dt*G[1:rows+1,1:cols+1]*N[1:rows+1,1:cols+1])
 
-def AdjustNL(crystal):
+    A1_x=(A[1:rows+1,1:cols+1]-A[1:rows+1,0:cols])/dx
+    A_next[1:rows+1,1:cols+1]=A[1:rows+1,1:cols+1]-(dt*u[1:rows+1,1:cols+1]*A1_x)+2*(dt*G[1:rows+1,1:cols+1]*L[1:rows+1,1:cols+1])
+    
+    V1_x=(V[1:rows+1,1:cols+1]-V[1:rows+1,0:cols])/dx
+    V_next[1:rows+1,1:cols+1]=V[1:rows+1,1:cols+1]-(dt*u[1:rows+1,1:cols+1]*V1_x)+2*(dt*G[1:rows+1,1:cols+1]*A[1:rows+1,1:cols+1])
+    
+def AdjustNLAV(crystal):
     crystal.N=crystal.N_next.copy()
     crystal.L=crystal.L_next.copy()
-    
+    crystal.A=crystal.A_next.copy()
+    crystal.V=crystal.V_next.copy()
     
 def WriteToFile(space,crystal,iteration,interval):
     if(iteration%interval==0):
@@ -475,6 +505,6 @@ def WriteToFile(space,crystal,iteration,interval):
         with open(path,"w") as f:
             for i in range(space.rowpts):
                 for j in range(space.colpts):
-                    f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(space.p_c[i,j],space.u_c[i,j],space.v_c[i,j],space.T_c[i,j],space.C_c[i,j],crystal.N_c[i,j],crystal.L_c[i,j]))
+                    f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(space.p_c[i,j],space.u_c[i,j],space.v_c[i,j],space.T_c[i,j],space.C_c[i,j],crystal.N_c[i,j],crystal.L_c[i,j],crystal.A_c[i,j],crystal.V_c[i,j]))
     
 #######################END OF FILE#############################################        

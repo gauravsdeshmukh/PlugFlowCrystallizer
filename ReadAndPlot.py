@@ -9,13 +9,14 @@ import scipy as sci
 import os
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.cm as cm
 
 
 os.chdir("Result")
 cwdir=os.getcwd()
 
-final_iter=8500
-inter=20
+final_iter=18850
+inter=50
 rowpts=40
 colpts=150
 length=10
@@ -59,6 +60,8 @@ def animate(i):
     c_arr=arr[:,4]
     n_arr=arr[:,5]
     l_arr=arr[:,6]
+    a_arr=arr[:,7]
+    v_arr=arr[:,8]
     
     p_p=p_arr.reshape((rowpts,colpts))
     u_p=u_arr.reshape((rowpts,colpts))
@@ -67,14 +70,16 @@ def animate(i):
     c_p=c_arr.reshape((rowpts,colpts))
     n_p=n_arr.reshape((rowpts,colpts))
     l_p=l_arr.reshape((rowpts,colpts))
+    a_p=a_arr.reshape((rowpts,colpts))
+    v_p=v_arr.reshape((rowpts,colpts))
     ln_p=l_p/n_p
     
     ax.clear()
     ax.set_xlim([0,length])
     ax.set_ylim([0,breadth])
     ax.set_title(f"Frame No: {i}")
-    cont=ax.contourf(X,Y,ln_p)
-    stream=ax.streamplot(X,Y,u_p,v_p,color="k")
+    cont=ax.contourf(X,Y,ln_p,cmap=cm.viridis)
+    stream=ax.quiver(X,Y,u_p,v_p,color="k")
     return cont,stream
 
 anim=animation.FuncAnimation(fig,animate,frames=number_of_frames,interval=50,blit=False)
