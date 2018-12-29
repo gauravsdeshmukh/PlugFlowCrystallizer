@@ -21,5 +21,5 @@ Note that this program is still in a nascent stage and that it works only for th
 
 I'd like to acknowledge that "Population Balances. Theory and Applications to Particulate Systems in Engineering" by Professor Ramkrishna (Dept. of Chemical Engineering, Purdue University) and "Crystal shape and size control using a plug flow crystallization configuration" by Kwon et al.(2014) (DOI: 10.1016/j.ces.2014.07.058) were incredibly helpful sources for understanding the fundamentals of population balance modelling as well as working of a plug flow crystallizer respectively. 
 
-A link to a presentation detailing the objectives, theory and results of the project is given below:
+A link to a presentation detailing the objectives, theory and results of the project is given here:
 https://1drv.ms/p/s!AqDBrJ-zcVuvkrw0Bozv7rhgWJJ2mA
